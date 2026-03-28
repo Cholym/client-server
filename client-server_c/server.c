@@ -6,7 +6,7 @@
 #include <unistd.h>
 
 #define PORT 2255
-#define STUDENT_ID 5239
+#define STUDENT_ID "5239"
 #define RESPONSE_SIZE 8192
 
 // 1.	Создайте серверное приложение:
@@ -37,7 +37,6 @@ int build_csv_from_cmd(const char *cmd, char *out, size_t out_size, const char *
             pclose(fp);
             return -1;
         }
-        strcat(out, ",");
         strcat(out, line);
     }
     pclose(fp);
@@ -54,17 +53,25 @@ int main(int argc, char const *argv[]) {
     char buffer[1024] = {0};
 
     // Создаем сокет
+    // AF_INET - IPv4 протокол
+    // SOCK_STREAM - протокол TCP
+    // 0 - протокол по умолчанию (TCP)
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
         perror("socket failed");
         exit(EXIT_FAILURE);
     }
 
+    // setsockopt - установка опций сокета
+    // SOL_SOCKET - уровень сокета
+    // SO_REUSEADDR | SO_REUSEPORT - опции
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) {
         perror("setsockopt");
         exit(EXIT_FAILURE);
     }
+
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
+    // htons - преобразование порта из хост-формата в сетевой
     address.sin_port = htons(PORT);
 
     if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
@@ -77,13 +84,28 @@ int main(int argc, char const *argv[]) {
         exit(EXIT_FAILURE);
     }
 
+    // server_fd - дескриптор сокета
     new_socket = accept(server_fd, (struct sockaddr *)&address, &addrlen);
+    // accept - блокируется до тех пор, пока не будет принято соединение
     if (new_socket < 0) {
         perror("accept");
         exit(EXIT_FAILURE);
     }
 
-
+    while (1) {
+        valread = read(new_socket, buffer, sizeof(buffer) - 1);
+        if (valread <= 0) break;
+        buffer[valread] = '\0';
+        if (strcmp(buffer, "etc") < 0) {
+            build_csv_from_cmd("ls /etc/*.conf 2>/dev/null | sed 's|.*/||'", buffer, sizeof(buffer), "server" STUDENT_ID ",");
+        } else if (strcmp(buffer, "dev") == 0) {
+            build_csv_from_cmd("ls -d /dev/*/ 2>/dev/null | sed 's|/dev/||;s|/||'", buffer, sizeof(buffer), "server" STUDENT_ID ",");
+        } else {
+            strcpy(buffer, "Unknown command");
+            break;
+        }
+        send(new_socket, buffer, strlen(buffer), 0);
+    }
 
     close(new_socket);
     close(server_fd);
