@@ -3,11 +3,11 @@ CFLAGS=-Wall -Werror -Wextra
 
 all: server client
 
-server: server.c common.h
-    @$(CC) $(CFLAGS) -o server server.c
+server: server.c
+	@$(CC) $(CFLAGS) -o server server.c
 
-client: client.c common.h
-    @$(CC) $(CFLAGS) -o client client.c
+client: client.c
+	@$(CC) $(CFLAGS) -o client client.c
 
 clean:
-    @rm -f server client
+	@rm -f server client
